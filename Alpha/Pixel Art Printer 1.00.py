@@ -2,7 +2,8 @@
 # python version    : 3.6.3
 # date              : 2018.03.07
 
-import win32api, win32con, time
+import win32api, win32con, time, requests
+from io import BytesIO
 from PIL import Image
 
 # the time to hold down keys, default = 0.005, max should be 0.017 which is 1 frame
@@ -41,6 +42,7 @@ def place_block():
     time.sleep(holdTime)
     
 def select_block(targetColor):
+    global selectedToolbar, selectedBlock
     # try to find the block with the most similar color
     bestDifference = 9999
     bestToolbar = -1
@@ -56,7 +58,6 @@ def select_block(targetColor):
 
     # select the appropriate toolbar if not already selected
     if bestToolbar != selectedToolbar:
-        global selectedToolbar
         selectedToolbar = bestToolbar
         # hold down x to load toolbars
         press_key(0x58)
@@ -69,14 +70,30 @@ def select_block(targetColor):
     
     # select the appropriate block if not already selected
     if bestBlock != selectedBlock:
-        global selectedBlock
         selectedBlock = bestBlock
         press_key(keyMap[selectedBlock])
         time.sleep(holdTime)
         release_key(keyMap[selectedBlock])
 
+address = input("Address of image(local or from network): ")
+print("Retreving image . . .")
+if address.startswith("http"):
+    response = requests.get(address)
+    img = Image.open(BytesIO(response.content))
+else:
+    img = Image.open(address)
+print("Image retrieved\n\tsource width  : {}px\n\tsource height : {}px\n".format(img.width, img.height))
+
+targetWidth = int(input("Target width(32 for solo, 43 for team): "))
+maxHeight = int(input("Max height(default is 73): "))
+print("Processing . . .")
+targetHeight = min(round(float(targetWidth*img.height)/img.width), maxHeight)
+img.resize((targetWidth, targetHeight), Image.LANCZOS)
+print("Image processed\n\tprint width  : {} blocks\n\tprint height : {} blocks\n".format(targetWidth, targetHeight))
+
+input("Press enter key to begin countdown . . .")
 for i in range(5, 0, -1):
-    print("Script will run in {}".format(i))
+    print("Printing will start in {}".format(i))
     time.sleep(1)
 
 imgHeight = 1
@@ -96,4 +113,4 @@ for i in range(imgHeight, 0, -1):
 #since the block below should have been placed already so
 #player can spam click right and place when reach the next block
 
-input("Press enter key to exit . . . ")
+input("Press enter key to exit . . .")
